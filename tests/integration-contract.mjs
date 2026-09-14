@@ -7,7 +7,7 @@ import { TYPES } from '../game-core.mjs';
 import { TYPE_REPORTS } from '../assets/liubti/reports.mjs';
 import worker from '../worker.js';
 
-const prompt = await readFile(new URL('../主持人Prompt.md', import.meta.url), 'utf8');
+const prompt = (await readFile(new URL('../主持人Prompt.md', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
 assert.equal(prompt, HOST_PROMPT_REFERENCE, '主持人 Prompt 快照必须与原文一致');
 assert.equal(CASES.length, 9, '正式题库必须包含 9 题');
 assert.deepEqual(Object.keys(TYPE_REPORTS).sort(), Object.keys(TYPES).sort(), '16 型报告文案必须完整');

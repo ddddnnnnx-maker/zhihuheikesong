@@ -22,6 +22,8 @@
 | `POST /api/reveal` | 关闭本局并返回汤底 |
 | `POST /api/evaluate` | 语义评估最终答案并生成 LiuBTI |
 
+Vercel 部署通过根目录下的 `api/*.mjs` 入口复用 `server/api.mjs`。密钥只从 Vercel 环境变量读取，不进入浏览器或仓库。
+
 生产环境必须配置 `DEEPSEEK_API_KEY`（secret）、`DEEPSEEK_MODEL` 和独立的 `SESSION_SECRET`（secret）。禁止把密钥写入仓库、前端、文档或日志。
 
 ## 关键文件
@@ -44,5 +46,6 @@
 node --check app.js
 node --check server/api.mjs
 node --check worker.js
+node tests/vercel-adapter.mjs
 git diff --check
 ```
