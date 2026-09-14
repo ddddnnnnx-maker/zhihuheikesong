@@ -1761,6 +1761,38 @@
   grid-column: span 2;
 }
 
+/* Report overview: two equal-weight primary cards, followed by a balanced detail grid. */
+.report-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto;
+  align-items: stretch;
+}
+
+.report-card.tag-card.liubti-card,
+.report-card.community-card {
+  grid-column: auto;
+  grid-row: auto;
+}
+
+.report-primary-card {
+  min-height: 540px;
+  height: 100%;
+}
+
+.report-card.community-card.report-primary-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-card.community-card.report-primary-card .demo-data {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.report-example-card {
+  grid-column: auto;
+}
+
 @media (max-width: 1100px) {
   .host-reaction-frame {
     width: min(52%, 176px);
@@ -1782,6 +1814,14 @@
 
   .case-note p {
     font-size: 14px;
+  }
+
+  .report-primary-card {
+    min-height: auto;
+  }
+
+  .report-card.tag-card.liubti-card.report-primary-card {
+    min-height: 440px;
   }
 }
 

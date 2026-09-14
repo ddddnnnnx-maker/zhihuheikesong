@@ -476,13 +476,13 @@ function rulesModalHTML() {
 
 function answerHTML(item) {
   const truth = state.reveal?.truth || "真相正在加载，请稍候。";
-  const assessmentItems = state.evaluation?.assessment?.items || [];
+  const revealedFacts = Array.isArray(state.reveal?.facts) ? state.reveal.facts.slice(0, 3) : [];
   const truthParts = truth.split(/\n+/).map((part) => part.trim()).filter(Boolean).slice(0, 3);
-  const breakdown = assessmentItems.length
-    ? assessmentItems.map((entry) => ({
-      label: { covered: "已覆盖", partial: "部分覆盖", missing: "尚未覆盖", contradicted: "与真相冲突" }[entry.status] || "评估项",
-      title: entry.label,
-      body: entry.reason
+  const breakdown = revealedFacts.length
+    ? revealedFacts.map((fact, index) => ({
+      label: fact.label || `真相线索 ${String(index + 1).padStart(2, "0")}`,
+      title: fact.title || item.title || item.hook,
+      body: fact.body || ""
     }))
     : truthParts.map((part, index) => ({ label: `真相线索 ${String(index + 1).padStart(2, "0")}`, title: item.title || item.hook, body: part }));
   const scoreHTML = state.answerRevealedDirectly
@@ -530,8 +530,8 @@ function reportHTML(item) {
     <main class="screen report-screen">
       <div class="report-header"><div><span class="eyebrow">LIUBTI · 本局推理图鉴</span><h1>你是怎么<br />接近真相的？</h1></div><span class="status-chip is-hot">${item.number} · ${state.questions.length} 问完成</span></div>
       <section class="report-grid">
-        <article class="report-card tag-card liubti-card"><div class="liubti-title"><span>LiuBTI · ${codeLabel}</span><h2>${escapeHTML(profile.name)}</h2></div><p>${escapeHTML(profile.summary)}</p><div class="liubti-axes">${dimensions}</div><img class="report-host liubti-host" src="${profile.image}" alt="${escapeHTML(profile.name)}对应的刘看山形象" /></article>
-        <article class="report-card community-card"><h3>本局判断依据</h3><div class="metric-big">${state.questions.length}<small>问</small></div><p>${profile.axes.map((axis) => escapeHTML(axis.reason)).join(" ") || "有效问答太少，本局暂不定型。"}</p><span class="demo-data">仅分析本局 · 不是固定人格标签</span></article>
+        <article class="report-card tag-card liubti-card report-primary-card"><div class="liubti-title"><span>LiuBTI · ${codeLabel}</span><h2>${escapeHTML(profile.name)}</h2></div><p>${escapeHTML(profile.summary)}</p><div class="liubti-axes">${dimensions}</div><img class="report-host liubti-host" src="${profile.image}" alt="${escapeHTML(profile.name)}对应的刘看山形象" /></article>
+        <article class="report-card community-card report-primary-card"><h3>本局判断依据</h3><div class="metric-big">${state.questions.length}<small>问</small></div><p>${profile.axes.map((axis) => escapeHTML(axis.reason)).join(" ") || "有效问答太少，本局暂不定型。"}</p><span class="demo-data">仅分析本局 · 不是固定人格标签</span></article>
         ${copy ? `<article class="report-card report-strength-card"><h3>你的优势</h3><p>${escapeHTML(copy.strength)}</p></article><article class="report-card report-blindspot-card"><h3>容易卡住的地方</h3><p>${escapeHTML(copy.blindspot)}</p></article><article class="report-card report-advice-card"><h3>下一局建议</h3><p>${escapeHTML(copy.advice)}</p></article><article class="report-card report-example-card"><h3>提问方式示例</h3><p>${escapeHTML(copy.examples)}</p><p>${escapeHTML(copy.message)}</p></article>` : ""}
       </section>
       <footer class="report-footer"><p>这是你这一局的推理模样，不是固定的人格标签。下一碗汤，也许会遇见不一样的你。</p><div class="report-actions"><button class="report-action" type="button" data-action="share-report">复制分享文案</button><button class="report-action" type="button" data-action="save-report">保存报告</button><button class="primary-button" type="button" data-action="topics">再选一题</button></div></footer>

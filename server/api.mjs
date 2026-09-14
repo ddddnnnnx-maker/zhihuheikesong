@@ -10,6 +10,20 @@ const messages = {
 };
 function json(body,status=200) {return new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});}
 function failure(code,status=400) {const e=new Error(code); e.status=status; throw e;}
+function compactText(text,max=170) {
+  const value=String(text||'').replace(/\s+/g,' ').trim();
+  return value.length>max?`${value.slice(0,max).replace(/[，、；：。！？,.!?\s]+$/,'')}……`:value;
+}
+export function revealFacts(item) {
+  if(Array.isArray(item.facts)&&item.facts.length>=3) return item.facts.slice(0,3);
+  const rubric=(item.rubric||[]).map(entry=>entry.label).filter(Boolean);
+  const story=item.mode==='story';
+  return [
+    {label:'01 · '+(story?'事实核心':'现象答案'),title:story?'真正发生了什么':'现象为何不同',body:compactText(item.truth)},
+    {label:'02 · '+(story?'关键反转':'作用机制'),title:story?'误解发生在哪里':'变化如何发生',body:compactText(item.twist)},
+    {label:'03 · 线索闭环',title:story?'题面如何被解释':'条件如何共同作用',body:rubric.length?`完整答案需要解释：${rubric.join('；')}。`:compactText(item.truth)}
+  ];
+}
 function limited(request) {
   const now=Date.now(); for(const [k,b] of buckets) if(now-b.start>60000) buckets.delete(k);
   const key=request.headers.get('CF-Connecting-IP')||'local'; const b=buckets.get(key)||{start:now,count:0};
@@ -207,7 +221,7 @@ export default {
           if(body.guess!==null&&(typeof body.guess!=='string'||!body.guess.trim()||body.guess.length>2000)) failure('invalid_guess');
           session.closed=true;session.guess=body.guess===null?null:body.guess.trim();
         }
-        return json({session:await sign(session,env),truth:item.truth,facts:item.facts});
+        return json({session:await sign(session,env),truth:item.truth,facts:revealFacts(item)});
       }
       if(url.pathname==='/api/evaluate') {
         if(!session.closed) failure('round_not_closed',409);

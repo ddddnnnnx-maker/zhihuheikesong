@@ -26,5 +26,7 @@ assert.equal(revealedResponse.status, 200);
 const revealed = await revealedResponse.json();
 assert.equal(typeof revealed.truth, "string");
 assert.ok(revealed.truth.length > 0);
+assert.equal(revealed.facts.length, 3);
+assert.deepEqual(revealed.facts.map((fact) => fact.label.slice(0, 2)), ["01", "02", "03"]);
 
 console.log("vercel-adapter: ok");
