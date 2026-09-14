@@ -9,7 +9,6 @@ permissions:
 
 jobs:
   unpack:
-    if: ${{ hashFiles('zhihuheikesong-source.zip.part-*') != '' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
