@@ -1,0 +1,28 @@
+name: Unpack source once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    if: ${{ hashFiles('zhihuheikesong-source.zip.part-*') != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack source and remove temporary files
+        shell: bash
+        run: |
+          cat zhihuheikesong-source.zip.part-* > /tmp/zhihuheikesong-source.zip
+          unzip -q /tmp/zhihuheikesong-source.zip -d /tmp/zhihuheikesong-source
+          cp -a /tmp/zhihuheikesong-source/. .
+          rm -f zhihuheikesong-source.zip.part-*
+          rm -f .github/workflows/unpack-source.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Import 看山有碗汤 source"
+          git push
