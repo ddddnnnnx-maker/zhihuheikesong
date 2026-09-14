@@ -491,8 +491,8 @@ function answerHTML(item) {
       ? `<div><span class="card-kicker">答案匹配度</span><div class="score-number is-direct">评估中</div><p>AI 正在按核心事实与因果关系核对你的答案。</p></div>`
       : `<div><span class="card-kicker">答案匹配度</span><div class="score-number">${state.score}<small>%</small></div><p>按核心事实与因果关系评估，不按提问次数或关键词堆积加分。</p></div>`;
   const sourceLink = item.sourceUrl
-    ? `<a class="ghost-button" href="${item.sourceUrl}" target="_blank" rel="noreferrer">${escapeHTML(item.sourceLabel)} ↗</a>`
-    : `<span class="ghost-button" aria-label="内容来源">${escapeHTML(item.sourceLabel)}</span>`;
+    ? `<a class="ghost-button" href="${item.sourceUrl}" target="_blank" rel="noreferrer">查看原帖</a>`
+    : `<span class="ghost-button" aria-label="内容来源">查看原帖</span>`;
   return `
     <main class="screen answer-screen">
       <section class="answer-hero">

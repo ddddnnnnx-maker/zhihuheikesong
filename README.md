@@ -7,7 +7,7 @@
 - 前端沿用原高保真版本：首页、循环选题、读题、侦探线索板、可拖动卡片、主持人 GIF、语音转文字、揭晓与报告界面均保留。
 - 后端采用交接包版本：HMAC 签名会话、四小时过期、六问计数、重复/开放式/多问/歧义处理、疑难结果复核、线索合并、揭晓与报告评分。普通是非问只调用一次判题模型，避免串行复核造成等待。
 - 9 道正式题目的汤面、汤底、提示、裁判边界和评分 rubric 统一维护在 `data/cases.mjs`；浏览器只收到公开题面，不包含答案。
-- AI 主持人优先通过服务端调用 DeepSeek Flash（官方 API ID：`deepseek-flash`）；上游超时且知乎模型也已配置时才自动切换，浏览器不保存任何 API 密钥，也不使用关键词规则伪造判断。
+- AI 主持人通过服务端智能切换 DeepSeek V4：首次是非判断优先调用 Flash（`deepseek-v4-flash`），格式修复、疑难结果复核和最终报告优先调用 Pro（`deepseek-v4-pro`）；首选模型不可用时自动回退到另一款，浏览器不保存任何 API 密钥，也不使用关键词规则伪造判断。
 - 9 张读题漫画按题目 ID 保存在 `assets/case-scenes/`，读题页完整显示；推理页 AI 主持人区提供可滚动的完整题面。
 - LiuBTI 由服务端根据实际问答生成。每个维度至少需要两条可引用的问答证据；不足时显示“线索还不够”，不会猜测类型。
 - 16 型完整报告文案在 `assets/liubti/reports.mjs`。
@@ -24,7 +24,7 @@
 
 Vercel 部署通过根目录下的 `api/*.mjs` 入口复用 `server/api.mjs`。密钥只从 Vercel 环境变量读取，不进入浏览器或仓库。
 
-生产环境必须配置 `DEEPSEEK_API_KEY`（secret）、`DEEPSEEK_MODEL` 和独立的 `SESSION_SECRET`（secret）。禁止把密钥写入仓库、前端、文档或日志。
+生产环境必须配置 `DEEPSEEK_API_KEY`（secret）和独立的 `SESSION_SECRET`（secret）。可用 `DEEPSEEK_FAST_MODEL`、`DEEPSEEK_PRO_MODEL` 分别覆盖默认的 `deepseek-v4-flash`、`deepseek-v4-pro`；兼容旧的 `DEEPSEEK_MODEL`，仅把它作为快速模型配置读取。禁止把密钥写入仓库、前端、文档或日志。
 
 ## 关键文件
 

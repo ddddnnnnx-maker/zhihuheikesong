@@ -5,12 +5,16 @@ import { CASES, publicCase } from '../data/cases.mjs';
 import { HOST_PROMPT_REFERENCE } from '../server/host-prompt.mjs';
 import { TYPES } from '../game-core.mjs';
 import { TYPE_REPORTS } from '../assets/liubti/reports.mjs';
+import { deepSeekModels } from '../server/api.mjs';
 import worker from '../worker.js';
 
 const prompt = (await readFile(new URL('../主持人Prompt.md', import.meta.url), 'utf8')).replace(/\r\n/g, '\n');
 assert.equal(prompt, HOST_PROMPT_REFERENCE, '主持人 Prompt 快照必须与原文一致');
 assert.equal(CASES.length, 9, '正式题库必须包含 9 题');
 assert.deepEqual(Object.keys(TYPE_REPORTS).sort(), Object.keys(TYPES).sort(), '16 型报告文案必须完整');
+assert.deepEqual(deepSeekModels({}, 'fast'), ['deepseek-v4-flash', 'deepseek-v4-pro'], '普通判断应优先 Flash 并以 Pro 备用');
+assert.deepEqual(deepSeekModels({}, 'pro'), ['deepseek-v4-pro', 'deepseek-v4-flash'], '疑难判断和报告应优先 Pro 并以 Flash 备用');
+assert.deepEqual(deepSeekModels({ DEEPSEEK_MODEL: 'deepseek-flash' }, 'fast'), ['deepseek-v4-flash', 'deepseek-v4-pro'], '旧 Flash 配置应自动迁移到 V4 官方模型名');
 
 const publicText = JSON.stringify(CASES.map(publicCase));
 for (const privateField of ['truth', 'unknown', 'clues', 'rubric', 'judgeNotes']) {
@@ -47,7 +51,7 @@ try {
   assert.equal(judged.data.history.length, 1);
   assert.equal(modelCalls, 1, '普通是非问只应调用一次模型');
   assert.equal(lastModelRequest.max_tokens, 600, '判题 JSON 不应保留报告级输出长度');
-  assert.equal(lastModelRequest.model, 'deepseek-flash', '应使用 DeepSeek 官方 Flash 模型 ID');
+  assert.equal(lastModelRequest.model, 'deepseek-v4-flash', '普通判断应使用 DeepSeek V4 Flash');
 
   const relationRound = await call('start', { caseId: 'parcel' });
   const callsBeforeRelation = modelCalls;
@@ -83,7 +87,7 @@ try {
   const fallbackStart = await call('start', { caseId: 'parcel' }, fallbackEnv, 'fallback-contract');
   const fallbackJudge = await call('judge', { session: fallbackStart.data.session, question: '来的人是妈妈吗？' }, fallbackEnv, 'fallback-contract');
   assert.equal(fallbackJudge.status, 200);
-  assert.deepEqual(providerUrls.map((url) => new URL(url).hostname), ['api.deepseek.com', 'developer.zhihu.com'], 'DeepSeek 不可用时应转到已配置的知乎模型');
+  assert.deepEqual(providerUrls.map((url) => new URL(url).hostname), ['api.deepseek.com', 'api.deepseek.com', 'developer.zhihu.com'], 'DeepSeek 两档模型不可用时应转到已配置的知乎模型');
 
   const hidden = await worker.fetch(new Request('http://test/data/cases.mjs'), env);
   assert.equal(hidden.status, 404);

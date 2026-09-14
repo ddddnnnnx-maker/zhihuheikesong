@@ -61,9 +61,22 @@ async function callModelProvider(provider,instruction,data,deadline,maxTokens) {
     try {return JSON.parse(text);} catch {failure('invalid_model_response',502);}
   } catch(e) {if(e.status) throw e; failure('model_unavailable',502);} finally {clearTimeout(timeout);}
 }
-async function model(env,instruction,data,deadline=Date.now()+25000,maxTokens=600) {
+export function deepSeekModels(env,tier='fast') {
+  const legacyAliases={
+    'deepseek-flash':'deepseek-v4-flash',
+    'deepseek-chat':'deepseek-v4-flash',
+    'deepseek-reasoner':'deepseek-v4-pro'
+  };
+  const configuredFast=env.DEEPSEEK_FAST_MODEL||env.DEEPSEEK_MODEL;
+  const fast=legacyAliases[configuredFast]||configuredFast||'deepseek-v4-flash';
+  const pro=env.DEEPSEEK_PRO_MODEL||'deepseek-v4-pro';
+  return [...new Set(tier==='pro'?[pro,fast]:[fast,pro])];
+}
+async function model(env,instruction,data,deadline=Date.now()+25000,maxTokens=600,tier='fast') {
   const providers=[];
-  if(env.DEEPSEEK_API_KEY) providers.push({deepseek:true,key:env.DEEPSEEK_API_KEY,url:'https://api.deepseek.com/chat/completions',model:env.DEEPSEEK_MODEL||'deepseek-flash'});
+  if(env.DEEPSEEK_API_KEY) {
+    for(const model of deepSeekModels(env,tier)) providers.push({deepseek:true,key:env.DEEPSEEK_API_KEY,url:'https://api.deepseek.com/chat/completions',model});
+  }
   if(env.ZHIHU_ACCESS_SECRET) providers.push({deepseek:false,key:env.ZHIHU_ACCESS_SECRET,url:'https://developer.zhihu.com/v1/chat/completions',model:'zhida-fast-1p5'});
   if(!providers.length) failure('judge_not_configured',503);
   let lastError;
@@ -152,11 +165,11 @@ async function judge(body,session,item,env) {
   catch(e) {
     if(e.message!=='invalid_model_response')throw e;
     // Repair malformed output once, using the original task rather than trusting it.
-    decision=validateDecision(await model(env,reviewPrompt,data,deadline),item,session.history);
+    decision=validateDecision(await model(env,reviewPrompt,data,deadline,600,'pro'),item,session.history);
     return finishJudge(decision,question,session,env);
   }
   if(decision.counts&&['PARTIAL','IRRELEVANT'].includes(decision.verdict)) {
-    const second=validateDecision(await model(env,reviewPrompt,data,deadline),item,session.history);
+    const second=validateDecision(await model(env,reviewPrompt,data,deadline,600,'pro'),item,session.history);
     decision=reconcileDecisions(decision,second);
   }
   return finishJudge(decision,question,session,env);
@@ -199,7 +212,7 @@ export default {
       if(url.pathname==='/api/evaluate') {
         if(!session.closed) failure('round_not_closed',409);
         if(session.guess===null&&session.history.length<2) return json({assessment:null,profile:validateProfile(null,session.history)});
-        const raw=await model(env,evaluationPrompt,{truth:item.truth,rubric:item.rubric,guess:session.guess,history:session.history},Date.now()+25000,2400);
+        const raw=await model(env,evaluationPrompt,{truth:item.truth,rubric:item.rubric,guess:session.guess,history:session.history},Date.now()+25000,2400,'pro');
         let assessment=null,profile;
         try {assessment=session.guess===null?null:scoreRubric(item.rubric,raw.assessments);profile=validateProfile(raw.profile,session.history);} catch {failure('invalid_model_response',502);}
         return json({assessment,profile});
