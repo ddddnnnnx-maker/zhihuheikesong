@@ -567,7 +567,7 @@ function currentLiuBTI() {
 }
 
 function reportHTML(item) {
-  if (state.evaluationStatus === "loading") return `<main class="screen report-screen"><div class="report-header"><div><span class="eyebrow">LIUBTI · 本局推理图鉴</span><h1>报告正在生成</h1></div><span class="status-chip is-hot">AI ANALYSING</span></div><section class="report-grid"><article class="report-card"><h3>看山正在回看你的问答路径</h3><p>报告会根据实际问题顺序、判断结果与最终答案生成，不使用模拟人格数据。</p></article></section></main>`;
+  if (state.evaluationStatus === "loading") return `<main class="screen report-screen"><div class="report-header"><div><span class="eyebrow">LIUBTI · 本局推理图鉴</span><h1>报告正在生成</h1></div><span class="status-chip is-hot">AI ANALYSING</span></div><section class="report-grid"><article class="report-card"><h3>看山正在回看你的问答路径 <span class="thinking-dots" aria-hidden="true"><i></i><i></i><i></i></span></h3><p>报告会根据实际问题顺序、判断结果与最终答案生成，不使用模拟人格数据，通常需要几秒钟。</p></article></section></main>`;
   if (state.evaluationStatus === "error") return `<main class="screen report-screen"><div class="report-header"><div><span class="eyebrow">LIUBTI · 本局推理图鉴</span><h1>报告暂时没有生成</h1></div><span class="status-chip">RETRY</span></div><section class="report-grid"><article class="report-card"><h3>本局记录仍然保留</h3><p>${escapeHTML(state.evaluationError || "AI 服务暂时没有响应，请稍后重试。")}</p><button class="primary-button" type="button" data-action="retry-evaluate">重新生成报告</button></article></section></main>`;
   const profile = currentLiuBTI();
   const codeLabel = profile.code || "----";
@@ -637,6 +637,54 @@ function positionEvidenceLines() {
     line.setAttribute("d", `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2} ${y2}`);
     line.style.opacity = "1";
   });
+}
+
+// Full render() tears down and rebuilds the whole evidence board (and forces
+// a layout reflow in positionEvidenceLines) even when only the turn/host
+// panel changed. That cost grows with the number of archived cards, which is
+// why the board felt increasingly laggy after several questions. This patches
+// just the turn-dock and host-reaction DOM in place, and defers to a full
+// render() outside the game screen or before the board's own DOM exists.
+function patchTurnAndHost() {
+  const dockTop = app.querySelector(".turn-dock-top");
+  if (state.screen !== "game" || lastRenderedScreen !== "game" || !dockTop) { render(); return; }
+  dockTop.innerHTML = currentTurnHTML();
+  if (!state.recommendationOpen) app.querySelector(".recommend-panel")?.remove();
+  const reactionFrame = app.querySelector(".host-reaction-frame");
+  if (reactionFrame) {
+    const prevMedia = reactionFrame.querySelector(".host-reaction-media");
+    const wrap = document.createElement("div");
+    wrap.innerHTML = hostReactionHTML();
+    const nextFrame = wrap.firstElementChild;
+    const nextMedia = nextFrame.querySelector(".host-reaction-media");
+    if (prevMedia && nextMedia?.getAttribute("src") === prevMedia.getAttribute("src")) nextMedia.replaceWith(prevMedia);
+    reactionFrame.replaceWith(nextFrame);
+  }
+  const bubble = app.querySelector(".host-bubble");
+  if (bubble) bubble.textContent = hostBubbleText();
+  const remaining = 6 - state.questions.length;
+  const limitReached = remaining === 0;
+  const inputLocked = limitReached || state.isThinking || state.isArchiving;
+  const input = app.querySelector("#questionInput");
+  if (input) input.disabled = inputLocked;
+  app.querySelector('[data-action="toggle-recommendations"]')?.toggleAttribute("disabled", inputLocked);
+  app.querySelector('[data-action="ask-question"]')?.toggleAttribute("disabled", inputLocked);
+  app.querySelector('[data-action="reveal-answer"]')?.toggleAttribute("disabled", state.isThinking || state.isArchiving);
+  const finalButton = app.querySelector('[data-action="open-guess"]');
+  if (finalButton) finalButton.textContent = limitReached ? "提交最终推理" : "我知道答案了";
+  const hint = app.querySelector(".dock-hint");
+  if (hint) hint.textContent = limitReached ? "六次机会已用完，请提交最终推理" : state.isArchiving ? "正在整理这条线索…" : "Enter 发送 · 不符合是非格式的问题不扣次数";
+  let errorEl = app.querySelector(".turn-dock > .error-text");
+  if (state.inputError) {
+    if (!errorEl) {
+      errorEl = document.createElement("p");
+      errorEl.className = "error-text";
+      app.querySelector(".turn-dock-bottom")?.insertAdjacentElement("afterend", errorEl);
+    }
+    errorEl.textContent = state.inputError;
+  } else {
+    errorEl?.remove();
+  }
 }
 
 function resetRound() {
@@ -787,7 +835,7 @@ async function askQuestion(question) {
   state.selectedHint = "";
   state.currentTurn = { kind: "thinking", text };
   state.isThinking = true;
-  render();
+  patchTurnAndHost();
   const item = currentCase();
   let result;
   let decision;
@@ -796,7 +844,7 @@ async function askQuestion(question) {
     if (decision.verdict === "INVALID" || decision.counts === false) {
       state.isThinking = false;
       state.currentTurn = { kind: "rejected", text, message: decision.message, reason: decision.reason };
-      render();
+      patchTurnAndHost();
       return;
     }
     const verdictMap = { YES: "yes", NO: "no", PARTIAL: "partial", IRRELEVANT: "irrelevant" };
@@ -804,7 +852,7 @@ async function askQuestion(question) {
   } catch (error) {
     state.isThinking = false;
     state.currentTurn = { kind: "rejected", rejectionType: "service", text, message: API_ERROR_MESSAGES[error.code] || "AI 主持人暂时没有响应，本次不扣次数，请稍后重试。" };
-    render();
+    patchTurnAndHost();
     return;
   }
   window.setTimeout(() => {
@@ -813,7 +861,7 @@ async function askQuestion(question) {
     state.currentTurn = { kind: "answer", index: pieceIndex, text, result };
     state.isThinking = false;
     state.isArchiving = true;
-    render();
+    patchTurnAndHost();
     // Do not wait for requestAnimationFrame: background tabs can throttle it for seconds.
     window.setTimeout(() => animateAnswerToBoard(pieceIndex), 220);
   }, 120);
