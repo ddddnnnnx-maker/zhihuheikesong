@@ -870,7 +870,12 @@ async function askQuestion(question) {
 function animateAnswerToBoard(index) {
   const question = state.questions[index];
   if (!question) return;
-  const source = document.querySelector(`[data-answer-index="${index}"]`);
+  // Fly from the small verdict badge, not the whole wide answer bubble - starting
+  // a card-shaped flight from a wide rectangle reads as "a box getting crushed".
+  // A pill-sized seed that grows into the card feels like the exchange condensing
+  // into a thought, and the content only appears once it has room to sit in.
+  const seedSource = document.querySelector(`[data-answer-index="${index}"] .current-verdict`);
+  const exchange = seedSource?.closest(".current-exchange");
   const target = document.querySelector(`[data-evidence-index="${index}"]`);
   const reduceMotion = document.body.classList.contains("no-motion") || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -889,36 +894,51 @@ function animateAnswerToBoard(index) {
     if (state.questions.length === 6) showToast("六张线索卡片已归位，请提交最终推理。");
   };
 
-  if (!source || !target || reduceMotion) {
+  if (!seedSource || !target || reduceMotion) {
     finish();
     return;
   }
 
-  const sourceRect = source.getBoundingClientRect();
+  const sourceRect = seedSource.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
   flyingCard = document.createElement("article");
-  flyingCard.className = `fly-evidence-card is-${question.result}`;
+  flyingCard.className = `fly-evidence-card is-condensing is-${question.result}`;
   flyingCard.setAttribute("aria-hidden", "true");
-  flyingCard.innerHTML = `<span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHTML(question.keyword || "新线索")}</strong><div><b>${verdictLabel(question.result)}</b><em>${evidenceLabel(question.result)}</em></div>`;
+  flyingCard.innerHTML = `
+    <span class="fly-seed">${verdictLabel(question.result)}</span>
+    <div class="fly-face">
+      <span>${String(index + 1).padStart(2, "0")}</span>
+      <strong>${escapeHTML(question.keyword || "新线索")}</strong>
+      <div><b>${verdictLabel(question.result)}</b><em>${evidenceLabel(question.result)}</em></div>
+    </div>`;
   flyingCard.style.left = `${sourceRect.left}px`;
   flyingCard.style.top = `${sourceRect.top}px`;
   flyingCard.style.width = `${sourceRect.width}px`;
   flyingCard.style.height = `${sourceRect.height}px`;
   document.body.appendChild(flyingCard);
 
-  source.classList.add("is-departing");
+  exchange?.classList.add("is-departing");
   const deltaX = targetRect.left - sourceRect.left;
   const deltaY = targetRect.top - sourceRect.top;
   const targetScaleX = targetRect.width / sourceRect.width;
   const targetScaleY = targetRect.height / sourceRect.height;
+  const duration = 620;
   const flight = flyingCard.animate([
-    { transform: "translate(0, 0) scale(1)", opacity: 1 },
-    { transform: `translate(${deltaX * 0.42}px, ${deltaY * 0.35 - 52}px) scale(.82) rotate(-1.5deg)`, opacity: .94, offset: .48 },
-    { transform: `translate(${deltaX}px, ${deltaY}px) scale(${targetScaleX}, ${targetScaleY}) rotate(0deg)`, opacity: .98 }
-  ], { duration: 480, easing: "cubic-bezier(.22,.8,.22,1)", fill: "forwards" });
+    { transform: "translate(0, 0) scale(1)", borderRadius: "999px", offset: 0 },
+    { transform: `translate(${deltaX * 0.4}px, ${deltaY * 0.4 - 46}px) scale(${Math.max(targetScaleX, targetScaleY) * 0.5}, ${Math.max(targetScaleX, targetScaleY) * 0.5})`, borderRadius: "46%", offset: .52 },
+    { transform: `translate(${deltaX}px, ${deltaY}px) scale(${targetScaleX}, ${targetScaleY})`, borderRadius: "18px", offset: 1 }
+  ], { duration, easing: "cubic-bezier(.22,.75,.22,1)", fill: "forwards" });
+  flyingCard.querySelector(".fly-seed").animate(
+    [{ opacity: 1, offset: 0 }, { opacity: 1, offset: .32 }, { opacity: 0, offset: .58 }],
+    { duration, easing: "linear", fill: "forwards" }
+  );
+  flyingCard.querySelector(".fly-face").animate(
+    [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .5 }, { opacity: 1, offset: .88 }],
+    { duration, easing: "linear", fill: "forwards" }
+  );
   flight.addEventListener("finish", finish, { once: true });
   flight.addEventListener("cancel", finish, { once: true });
-  window.setTimeout(finish, 650);
+  window.setTimeout(finish, duration + 160);
 }
 
 function showToast(message) {
