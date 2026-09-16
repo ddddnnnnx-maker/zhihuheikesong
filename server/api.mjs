@@ -1,5 +1,6 @@
 import { CASES, publicCase } from '../data/cases.mjs';
 import { HOST_PROMPT_REFERENCE } from './host-prompt.mjs';
+import { JUDGE_CALIBRATION } from '../data/judge-calibration.mjs';
 import { VERDICTS, normalizeQuestion, mergeClues, scoreRubric, validateProfile } from '../game-core.mjs';
 const buckets = new Map();
 const messages = {
@@ -77,12 +78,12 @@ async function callModelProvider(provider,instruction,data,deadline,maxTokens) {
 }
 export function deepSeekModels(env,tier='fast') {
   const legacyAliases={
-    'deepseek-flash':'deepseek-v4-flash',
-    'deepseek-chat':'deepseek-v4-flash',
+    'deepseek-v4-flash':'deepseek-flash',
+    'deepseek-chat':'deepseek-flash',
     'deepseek-reasoner':'deepseek-v4-pro'
   };
   const configuredFast=env.DEEPSEEK_FAST_MODEL||env.DEEPSEEK_MODEL;
-  const fast=legacyAliases[configuredFast]||configuredFast||'deepseek-v4-flash';
+  const fast=legacyAliases[configuredFast]||configuredFast||'deepseek-flash';
   const pro=env.DEEPSEEK_PRO_MODEL||'deepseek-v4-pro';
   return [...new Set(tier==='pro'?[pro,fast]:[fast,pro])];
 }
@@ -111,19 +112,20 @@ ${HOST_PROMPT_REFERENCE}
 </host_reference>
 接入适配规则：下列规则对原文存在冲突的地方优先适用。
 1. 输出使用下文JSON协议，替代原文的【计入轮次】【回答】文本格式。轮次和固定回复由服务端维护，模型只返回判断类别，不输出引导。
-2. 相关但缺少确定依据的事实用INVALID/UNKNOWN，不以不相关兜底；有歧义用INVALID/AMBIGUOUS。不依据“常识可能如此”编造背景。原文常识推断仅限可确定且不与题目冲突的推论。
-3. 先完成合法性和相关性检查，再判事实；只有最终四种有效回答计数。多个独立问题退回拆分，单一因果命题可以判部分正确。
+2. 未交代且不影响还原真相的旁枝用IRRELEVANT；只有相关而资料不足才用INVALID/UNKNOWN。有歧义且不同解释会改变回答才用INVALID/AMBIGUOUS。不依据“常识可能如此”编造背景。
+3. 先检查合法性，再优先核对已知事实，只有尚未确定的命题才按相关性区分IRRELEVANT与UNKNOWN；最终四种有效回答计数。多个独立问题退回拆分，单一因果命题可以判部分正确。
 4. 原文surface、truth、key_twist、confirmed_facts、player_question分别对应裁判包surface、truth、twist、history、question。history是真实历史问答，不代表其中每个玩家猜测都为真。
 你是海龟汤主持人看山。依照裁判包判断一个中文问题，不能引导、鼓励或解释。
 先识别问题的范围：是在问本题实际发生的事实，还是某种因素能否影响现象。资料中“可能影响”的因素不能证明本题实际用了该因素；资料没有写某事实也不能直接判NO。
 结合汤面理解省略和口语，不要求玩家使用专业名词。知识题中“和X有关吗”通常询问因素或方向；若资料明确提到X会影响现象，应接受这个宽泛方向，但不解锁更具体的机制卡。
-如果“有关”可能分别指实际原因、一般影响或物品身份，且不同合理解释会得到不同答案，返回INVALID、reason=AMBIGUOUS，不强行判不相关。不要为了回答而补充题目没有设定的情节。
-判IRRELEVANT前检查：玩家所问对象是否已在surface、truth、twist或clues中承担因果、身份或条件作用；若有关但细节没设定，用UNKNOWN。只有确实不影响本题解释的独立细节才用IRRELEVANT。
+“X重要吗/有关吗”是单一的相关性命题，默认按本故事的解谜因果判断，不因“有关”一词自动判歧义。只有上下文无法消歧且合理解释会得到相反答案时，才返回INVALID/AMBIGUOUS。不要为了回答而补充题目没有设定的情节。
+判IRRELEVANT前检查：若命题已由surface、truth或必然推论明确证实/证伪，应优先答YES/NO，即使它并非核心反转；若既未设定又不影响本题解释，答IRRELEVANT。相关但关键细节没设定才用UNKNOWN。
 先判断输入是否合法。开放问法、多问、空输入、乱码、非中文（中文夹必要英文专名可接受）、索要答案、问规则不计数。
 不要凭“什么”“和”等单个词机械拒绝：“妈妈和我穿同一件衣服吗”是一个关系命题。
 多个可独立回答的事实问题（例如“他杀人了吗，又自杀了吗”）返回verdict=INVALID、reason=MULTIPLE；单一因果解释或带限定条件的一个假设可进入判断。
 与已回答问题语义等同，包括同义改写，返回verdict=INVALID、reason=DUPLICATE，并给出原问题序号。例如 {"verdict":"INVALID","reason":"DUPLICATE","duplicateOf":2,"clueKeys":[]}。反向命题不是重复，必须正确处理否定。
-有效命题的真假均不影响还原真相时，判IRRELEVANT。相关但裁判包及必然推论不能确定的事实返回verdict=INVALID、reason=UNKNOWN，不计数；不得用不相关掩盖未知，也不得靠“常识可能如此”补剧情。
+有效命题的真假均不影响还原真相且没有被题面明确证实/证伪时，判IRRELEVANT。相关但裁判包及必然推论不能确定的事实返回verdict=INVALID、reason=UNKNOWN，不计数；不得用不相关掩盖关键未知，也不得用UNKNOWN拒答旁枝问题。
+题目若提供calibration，先读语义边界，再用examples校准相同命题的不同问法。例子不是词语触发器；不能靠单个词匹配定答案。问“生日”不等于问公司为何索取出生时辰，问“能力与时间有关”不等于问五年跨度是不是线索。
 明确支持判YES，明确反驳判NO。一个因果解释只有部分环节成立，或限定词/身份状态有误，判PARTIAL；核心行为为假而附带事实为真时判NO。宽泛但正确判YES。不能用PARTIAL表示不确定。
 输出 {"verdict":"YES|NO|PARTIAL|IRRELEVANT|INVALID","reason":"OPEN|MULTIPLE|EMPTY|UNREADABLE|LANGUAGE|ANSWER|RULES|UNKNOWN|AMBIGUOUS|DUPLICATE|null","duplicateOf":null或从1开始的原问题序号,"clueKeys":[]}
 以上竖线表示可选值，不能原样输出。verdict只能使用这五个值；所有不计数类别都放在reason中，reason无值时用JSON null。
@@ -135,9 +137,12 @@ YES只能选verdict为YES且问题直接确认的概念，NO只能选verdict为N
 PARTIAL、IRRELEVANT、INVALID的clueKeys必须为空。特别是PARTIAL不得通过卡片揭示正确部分。不要输出任何额外文案。
 最后核对：clues仅是可生成卡片的有限目录，不是完整事实表；没有对应key的正确问题仍然判YES并返回空clueKeys。知识题承认资料中的一般影响因素，即使它不是题目明确给出的实际差异。若提供judgeNotes，按其解释边界理解汤底。
 否定问句按字面命题处理，不把“不是X吗”理解成正向反问。“是妈妈吗”和“不是妈妈吗”不是重复；若资料明确是妈妈，后者判NO。`;
-const reviewPrompt=judgePrompt+`\n这是独立复核。请从裁判包重新作答，不假设任何先前判断正确。重点检查宽泛关系、否定范围、可能因素与实际原因的区别，及线索是否超出当前问题直接确认的信息。不同解释会改变答案时返回INVALID、reason=AMBIGUOUS。`;
+const reviewPrompt=judgePrompt+`\n这是独立复核。请从裁判包重新作答，不假设任何先前判断正确。重点检查口语指代、否定范围、“重要吗”是否为有效相关性问题、明确事实与谜底旁枝、真正相关但未知的区别，以及线索是否超出当前问题直接确认的信息。不同解释确实会改变答案时才返回INVALID、reason=AMBIGUOUS。`;
 const uncertainDecision=()=>({counts:false,verdict:'INVALID',reason:'AMBIGUOUS',message:'这个问题存在不同理解，看山暂时无法给出一致判断。本次不扣次数，请明确你想确认的关系或条件。',clues:[]});
 export function reconcileDecisions(first,second) {
+  // The Pro review is specifically requested for uncertain/irrelevant/partial
+  // Flash decisions. A concrete reviewed answer repairs an over-cautious one.
+  if(((!first.counts&&['UNKNOWN','AMBIGUOUS'].includes(first.reason))||['PARTIAL','IRRELEVANT'].includes(first.verdict))&&second.counts&&['YES','NO','PARTIAL','IRRELEVANT'].includes(second.verdict)) return second;
   if(first.verdict!==second.verdict||first.counts!==second.counts||(!first.counts&&(first.message!==second.message||first.duplicateOf!==second.duplicateOf)))return uncertainDecision();
   // Agreement never permits extra clues added only by the reviewer.
   return {...first,clues:first.clues.filter(a=>second.clues.some(b=>a.id===b.id&&a.level===b.level&&a.verdict===b.verdict))};
@@ -172,7 +177,7 @@ async function judge(body,session,item,env) {
   if(!/[\u3400-\u9fff]/.test(question)) return {counts:false,verdict:'INVALID',reason:'LANGUAGE',message:messages.LANGUAGE,clues:[],session:body.session};
   if(/^(?:为什么|为何|怎么|如何|什么|哪个|哪些|哪里|哪儿)/.test(question)) return {counts:false,verdict:'INVALID',reason:'OPEN',message:messages.OPEN,clues:[],session:body.session};
   if(/(?:到底|究竟|是否|是).{0,36}(?:还是|或者|或是).{1,36}/.test(question)) return {counts:false,verdict:'INVALID',reason:'MULTIPLE',message:messages.MULTIPLE,clues:[],session:body.session};
-  const data={mode:item.mode,surface:item.surface,truth:item.truth,twist:item.twist,unknown:item.unknown,judgeNotes:item.judgeNotes,clues:item.clues,history:session.history,question};
+  const data={mode:item.mode,surface:item.surface,truth:item.truth,twist:item.twist,unknown:item.unknown,judgeNotes:item.judgeNotes,calibration:JUDGE_CALIBRATION[item.id],clues:item.clues,history:session.history,question};
   const deadline=Date.now()+25000;
   let decision;
   try {decision=validateDecision(await model(env,judgePrompt,data,deadline),item,session.history);}
@@ -182,7 +187,7 @@ async function judge(body,session,item,env) {
     decision=validateDecision(await model(env,reviewPrompt,data,deadline,600,'pro'),item,session.history);
     return finishJudge(decision,question,session,env);
   }
-  if(decision.counts&&['PARTIAL','IRRELEVANT'].includes(decision.verdict)) {
+  if((decision.counts&&['PARTIAL','IRRELEVANT'].includes(decision.verdict))||(!decision.counts&&['UNKNOWN','AMBIGUOUS'].includes(decision.reason))) {
     const second=validateDecision(await model(env,reviewPrompt,data,deadline,600,'pro'),item,session.history);
     decision=reconcileDecisions(decision,second);
   }

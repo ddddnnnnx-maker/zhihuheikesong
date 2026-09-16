@@ -12,9 +12,9 @@ const prompt = (await readFile(new URL('../主持人Prompt.md', import.meta.url)
 assert.equal(prompt, HOST_PROMPT_REFERENCE, '主持人 Prompt 快照必须与原文一致');
 assert.equal(CASES.length, 9, '正式题库必须包含 9 题');
 assert.deepEqual(Object.keys(TYPE_REPORTS).sort(), Object.keys(TYPES).sort(), '16 型报告文案必须完整');
-assert.deepEqual(deepSeekModels({}, 'fast'), ['deepseek-v4-flash', 'deepseek-v4-pro'], '普通判断应优先 Flash 并以 Pro 备用');
-assert.deepEqual(deepSeekModels({}, 'pro'), ['deepseek-v4-pro', 'deepseek-v4-flash'], '疑难判断和报告应优先 Pro 并以 Flash 备用');
-assert.deepEqual(deepSeekModels({ DEEPSEEK_MODEL: 'deepseek-flash' }, 'fast'), ['deepseek-v4-flash', 'deepseek-v4-pro'], '旧 Flash 配置应自动迁移到 V4 官方模型名');
+assert.deepEqual(deepSeekModels({}, 'fast'), ['deepseek-flash', 'deepseek-v4-pro'], '普通判断应优先 Flash 并以 Pro 备用');
+assert.deepEqual(deepSeekModels({}, 'pro'), ['deepseek-v4-pro', 'deepseek-flash'], '疑难判断和报告应优先 Pro 并以 Flash 备用');
+assert.deepEqual(deepSeekModels({ DEEPSEEK_MODEL: 'deepseek-v4-flash' }, 'fast'), ['deepseek-flash', 'deepseek-v4-pro'], '旧 Flash 名称应自动迁移到当前名称');
 
 const publicText = JSON.stringify(CASES.map(publicCase));
 for (const privateField of ['truth', 'unknown', 'clues', 'rubric', 'judgeNotes']) {
@@ -51,7 +51,7 @@ try {
   assert.equal(judged.data.history.length, 1);
   assert.equal(modelCalls, 1, '普通是非问只应调用一次模型');
   assert.equal(lastModelRequest.max_tokens, 600, '判题 JSON 不应保留报告级输出长度');
-  assert.equal(lastModelRequest.model, 'deepseek-v4-flash', '普通判断应使用 DeepSeek V4 Flash');
+  assert.equal(lastModelRequest.model, 'deepseek-flash', '普通判断应使用当前 DeepSeek Flash 名称');
 
   const relationRound = await call('start', { caseId: 'parcel' });
   const callsBeforeRelation = modelCalls;
