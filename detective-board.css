@@ -1706,6 +1706,27 @@
   width: min(54%, 188px);
   margin: 8px auto 7px;
 }
+.host-reaction-frame.is-rewrite { background: #fff; }
+.host-reaction-frame.is-rewrite .host-reaction-media { width: 86%; height: 86%; object-fit: contain; }
+.evidence-verdict b {
+  width: auto;
+  min-width: 25px;
+  height: auto;
+  min-height: 21px;
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+.evidence-card > strong {
+  overflow: visible;
+  min-height: 1.2em;
+  white-space: normal;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+.fly-evidence-card { will-change: transform, opacity; }
+.evidence-card.is-new { animation-duration: 380ms; }
+.evidence-card.is-dragging { will-change: transform; }
 
 .case-note {
   display: flex;

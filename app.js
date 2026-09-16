@@ -1,7 +1,7 @@
 import { TYPE_REPORTS } from "./assets/liubti/reports.mjs";
 
-const HOST_IMAGE = "assets/zhihu-brand/liu-kanshan-transparent.webp";
 const HOME_HOST_IMAGE = "assets/zhihu-brand/liu-kanshan-main-exact.webp";
+const HOST_IMAGE = HOME_HOST_IMAGE;
 const CARD_HOST_IMAGE = "assets/zhihu-brand/liu-kanshan-card-perch.webp";
 const LOGO_IMAGE = "assets/zhihu-brand/zhihu-logo.svg";
 const HOST_REACTION_IMAGES = {
@@ -9,6 +9,11 @@ const HOST_REACTION_IMAGES = {
   partial: "assets/zhihu-brand/host-yes-partial.gif",
   no: "assets/zhihu-brand/host-no.gif",
   irrelevant: "assets/zhihu-brand/host-irrelevant.gif"
+};
+const REWRITE_REACTION_IMAGE = "assets/zhihu-brand/host-rewrite.gif";
+const MUSIC_TRACKS = {
+  pages: "assets/audio/whimsical-sleuth-pages.mp3",
+  reasoning: "assets/audio/whimsical-sleuth-reasoning.mp3"
 };
 
 const CASE_SCENE_IMAGES = {
@@ -66,7 +71,7 @@ const cases = {
 };
 
 const initialState = {
-  screen: "home",
+  screen: sessionStorage.getItem("kanshanGuestEntered") === "1" ? "home" : "login",
   mode: "story",
   carouselIndex: 0,
   selectedCaseId: null,
@@ -99,6 +104,35 @@ const state = { ...initialState };
 const app = document.querySelector("#app");
 let lastRenderedScreen = null;
 let speechRecognition = null;
+const backgroundMusic = new Audio();
+backgroundMusic.loop = true;
+backgroundMusic.preload = "metadata";
+backgroundMusic.volume = 0.42;
+let musicMuted = localStorage.getItem("kanshanMusicMuted") === "1";
+let musicUnlockNeeded = false;
+
+function musicButtonHTML() {
+  return `<button class="music-toggle ${musicMuted ? "is-muted" : ""}" type="button" data-action="toggle-music" aria-label="${musicMuted ? "开启背景音乐" : musicUnlockNeeded ? "播放背景音乐" : "关闭背景音乐"}" aria-pressed="${!musicMuted}"><span aria-hidden="true">♫</span></button>`;
+}
+
+function updateMusicButtons() {
+  document.querySelectorAll(".music-toggle").forEach((button) => {
+    button.classList.toggle("is-muted", musicMuted);
+    button.setAttribute("aria-pressed", String(!musicMuted));
+    button.setAttribute("aria-label", musicMuted ? "开启背景音乐" : musicUnlockNeeded ? "播放背景音乐" : "关闭背景音乐");
+  });
+}
+
+function syncMusic() {
+  const desired = state.screen === "game" ? MUSIC_TRACKS.reasoning : MUSIC_TRACKS.pages;
+  if (!backgroundMusic.src.endsWith(desired)) {
+    backgroundMusic.src = desired;
+    backgroundMusic.load();
+  }
+  backgroundMusic.muted = musicMuted;
+  if (musicMuted) { backgroundMusic.pause(); return; }
+  backgroundMusic.play().then(() => { musicUnlockNeeded = false; updateMusicButtons(); }).catch(() => { musicUnlockNeeded = true; updateMusicButtons(); });
+}
 
 function escapeHTML(value = "") {
   return String(value)
@@ -135,8 +169,20 @@ function headerHTML(step = "探索") {
         <button class="nav-link ${navState === "topics" ? "is-active" : ""}" type="button" data-action="topics">选题</button>
         <button class="nav-link ${navState === "play" ? "is-active" : ""}" type="button" data-action="show-rules">怎么玩</button>
       </nav>
-      <div class="top-actions"><span class="progress-pill">${escapeHTML(step)}</span></div>
+      <div class="top-actions">${musicButtonHTML()}<span class="progress-pill">${escapeHTML(step)}</span></div>
     </header>`;
+}
+
+function loginHTML() {
+  return `<main class="screen login-screen">
+    <div class="login-sheen" aria-hidden="true"></div>
+    <div class="login-copy"><span class="eyebrow">知乎 · 看山有碗汤</span><h1>看山有碗汤</h1><p>六个问题，把一个离奇故事问成你自己的答案。</p>
+      <div class="login-actions"><button class="primary-button login-zhihu" type="button" data-action="zhihu-login"><img src="${LOGO_IMAGE}" alt="" /> 知乎账号登录 <small>授权接入中</small></button><button class="ghost-button login-guest" type="button" data-action="guest-login">以游客身份开始 <span aria-hidden="true">→</span></button></div>
+      <small class="login-note">游客可体验完整推理；知乎账号授权将在后续接入。</small>
+    </div>
+    <div class="login-visual"><div class="login-orbit" aria-hidden="true"></div><img src="${HOME_HOST_IMAGE}" alt="拿着放大镜的刘看山" /></div>
+    <div class="login-music">${musicButtonHTML()}</div>
+  </main>`;
 }
 
 function homeHTML() {
@@ -297,17 +343,18 @@ function latestHostVerdict() {
 }
 
 function hostReactionHTML() {
+  const needsRewrite = state.currentTurn?.kind === "rejected" && state.currentTurn.rejectionType !== "service";
   const result = latestHostVerdict();
-  const src = HOST_REACTION_IMAGES[result] || HOST_IMAGE;
-  const alt = result ? `刘看山反馈：${verdictLabel(result)}` : "刘看山 AI 主持人";
-  return `<div class="host-reaction-frame ${result ? `is-${result}` : "is-idle"}" aria-live="polite">
+  const src = needsRewrite ? REWRITE_REACTION_IMAGE : HOST_REACTION_IMAGES[result] || HOST_IMAGE;
+  const alt = needsRewrite ? "刘看山提醒：请改写这个问题" : result ? `刘看山反馈：${verdictLabel(result)}` : "刘看山 AI 主持人";
+  return `<div class="host-reaction-frame ${needsRewrite ? "is-rewrite" : result ? `is-${result}` : "is-idle"}" aria-live="polite">
     <img class="host-reaction-media" src="${src}" alt="${alt}" />
   </div>`;
 }
 
 function hostBubbleText() {
   if (state.isThinking) return "我正在核对这个假设。";
-  if (state.currentTurn?.kind === "rejected") return "拆成一个是非问题再问。";
+  if (state.currentTurn?.kind === "rejected") return state.currentTurn.rejectionType === "service" ? "这次没有扣机会，请稍后再试。" : "请改写这个问题，本次不扣机会。";
   const result = latestHostVerdict();
   return result ? `本轮判断：${verdictLabel(result)}` : "请提出一个是非问题。";
 }
@@ -424,7 +471,7 @@ function gameHTML(item) {
           <div class="turn-dock-bottom">
             <div class="composer-line">
               <input class="question-input ${state.inputError ? "is-error" : ""}" id="questionInput" type="text" maxlength="80" value="" placeholder="${state.selectedHint ? `围绕“${escapeHTML(state.selectedHint)}”问一个是非问题…` : "继续问一个只能用是或否回答的问题…"}" ${inputLocked ? "disabled" : ""} />
-              <button class="recommend-button" type="button" data-action="toggle-recommendations" ${inputLocked ? "disabled" : ""}>AI 关键词提示</button>
+              <button class="recommend-button" type="button" data-action="toggle-recommendations" ${inputLocked ? "disabled" : ""}>看山の线索</button>
               <button class="send-question-button" type="button" data-action="ask-question" aria-label="发送问题" ${inputLocked ? "disabled" : ""}><span aria-hidden="true">↗</span></button>
             </div>
             <div class="dock-end-actions">
@@ -540,17 +587,23 @@ function reportHTML(item) {
 
 function render() {
   const screenChanged = lastRenderedScreen !== state.screen;
+  const previousHostMedia = state.screen === "game" && !screenChanged ? app.querySelector(".host-reaction-media") : null;
   let content = "";
   let step = "探索";
   const item = currentCase();
+  if (state.screen === "login") content = loginHTML();
   if (state.screen === "home") content = homeHTML();
   if (state.screen === "topics") { content = topicsHTML(); step = "01 选题"; }
   if (state.screen === "intro") { content = introHTML(item); step = "02 读题"; }
   if (state.screen === "game") { content = gameHTML(item); step = `${state.questions.length} / 6`; }
   if (state.screen === "answer") { content = answerHTML(item); step = "04 揭晓"; }
   if (state.screen === "report") { content = reportHTML(item); step = "05 报告"; }
-  app.innerHTML = `<div class="app-frame">${headerHTML(step)}${content}</div>${guessModalHTML()}${rulesModalHTML()}${state.toast ? `<div class="toast" role="status">${escapeHTML(state.toast)}</div>` : ""}`;
+  app.innerHTML = `<div class="app-frame">${state.screen === "login" ? "" : headerHTML(step)}${content}</div>${guessModalHTML()}${rulesModalHTML()}${state.toast ? `<div class="toast" role="status">${escapeHTML(state.toast)}</div>` : ""}`;
+  if (!screenChanged) app.querySelector(".screen")?.classList.add("no-screen-enter");
+  const nextHostMedia = app.querySelector(".host-reaction-media");
+  if (previousHostMedia && nextHostMedia?.getAttribute("src") === previousHostMedia.getAttribute("src")) nextHostMedia.replaceWith(previousHostMedia);
   lastRenderedScreen = state.screen;
+  if (screenChanged) syncMusic();
   requestAnimationFrame(() => {
     if (screenChanged) window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     const chat = document.querySelector("#chatLog");
@@ -625,7 +678,16 @@ function chooseMode(mode) {
 function moveCarousel(direction) {
   const length = currentList().length;
   state.carouselIndex = (state.carouselIndex + direction + length) % length;
-  render();
+  const cards = document.querySelectorAll("#carouselShell .topic-card");
+  if (state.screen !== "topics" || cards.length !== length) { render(); return; }
+  cards.forEach((card, index) => {
+    const offset = (index - state.carouselIndex + length) % length;
+    card.classList.remove("is-current", "is-prev", "is-next", "is-hidden");
+    card.classList.add(offset === 0 ? "is-current" : offset === length - 1 ? "is-prev" : offset === 1 ? "is-next" : "is-hidden");
+    card.setAttribute("aria-hidden", String(offset !== 0));
+  });
+  const counter = document.querySelector("#carouselShell .carousel-counter");
+  if (counter) counter.textContent = `${String(state.carouselIndex + 1).padStart(2, "0")} / ${String(length).padStart(2, "0")}`;
 }
 
 function extractEvidenceKeyword(item, question, decision, questionNumber) {
@@ -634,21 +696,31 @@ function extractEvidenceKeyword(item, question, decision, questionNumber) {
     : null;
   const usedKeywords = new Set(state.questions.map((entry) => entry.keyword));
   const makeUnique = (candidate) => {
-    const base = candidate.slice(0, 8) || "新线索";
+    const base = candidate.trim() || "关键假设";
     if (!usedKeywords.has(base)) return base;
     let suffix = 2;
-    while (usedKeywords.has(`${base.slice(0, 5)}·${suffix}`)) suffix += 1;
-    return `${base.slice(0, 5)}·${suffix}`;
+    while (usedKeywords.has(`${base}·${suffix}`)) suffix += 1;
+    return `${base}·${suffix}`;
   };
   if (verifiedClue?.label) return makeUnique(verifiedClue.label);
   const matchedHint = item.recommendations?.find((hint) => question.includes(hint.keyword));
   if (matchedHint) return makeUnique(matchedHint.keyword);
   const cleaned = question
-    .replace(/[？?！!。,.，、]/g, "")
-    .replace(/^(是不是|是否|会不会|有没有|难道|请问|可能是|跟|和)/, "")
-    .replace(/(吗|么|呢|有关|有关吗|导致的|造成的)$/, "")
+    .replace(/[？?！!。]/g, "")
+    .replace(/^(请问|我想知道|是不是|是否|会不会|有没有|难道|可能是|这个|这件事)/, "")
+    .replace(/(吗|么|呢)$/, "")
     .trim();
-  return makeUnique(cleaned || "新线索");
+  const clause = cleaned.split(/[，,；;、]/).map((part) => part.trim()).find((part) => part.length >= 2 && part.length <= 16);
+  if (clause) return makeUnique(clause);
+  if (cleaned.length <= 16) return makeUnique(cleaned);
+  if (typeof Intl.Segmenter === "function") {
+    const stop = new Set(["的", "了", "是", "在", "把", "被", "和", "与", "有", "这", "那", "一个", "因为", "所以", "吗"]);
+    const words = [...new Intl.Segmenter("zh-CN", { granularity: "word" }).segment(cleaned)]
+      .filter((segment) => segment.isWordLike && !stop.has(segment.segment))
+      .map((segment) => segment.segment);
+    if (words.length) return makeUnique(words.slice(0, 3).join("·"));
+  }
+  return makeUnique("待核实的假设");
 }
 
 function useRecommendation(keyword, guidance) {
@@ -656,7 +728,6 @@ function useRecommendation(keyword, guidance) {
   state.recommendationGuide = guidance;
   state.recommendationOpen = true;
   render();
-  requestAnimationFrame(() => document.querySelector("#questionInput")?.focus());
 }
 
 const API_ERROR_MESSAGES = {
@@ -743,8 +814,9 @@ async function askQuestion(question) {
     state.isThinking = false;
     state.isArchiving = true;
     render();
-    window.setTimeout(() => requestAnimationFrame(() => animateAnswerToBoard(pieceIndex)), 520);
-  }, 260);
+    // Do not wait for requestAnimationFrame: background tabs can throttle it for seconds.
+    window.setTimeout(() => animateAnswerToBoard(pieceIndex), 220);
+  }, 120);
 }
 
 function animateAnswerToBoard(index) {
@@ -754,7 +826,12 @@ function animateAnswerToBoard(index) {
   const target = document.querySelector(`[data-evidence-index="${index}"]`);
   const reduceMotion = document.body.classList.contains("no-motion") || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  let finished = false;
+  let flyingCard = null;
   const finish = () => {
+    if (finished) return;
+    finished = true;
+    flyingCard?.remove();
     question.archived = true;
     question.justAdded = true;
     state.currentTurn = null;
@@ -771,7 +848,7 @@ function animateAnswerToBoard(index) {
 
   const sourceRect = source.getBoundingClientRect();
   const targetRect = target.getBoundingClientRect();
-  const flyingCard = document.createElement("article");
+  flyingCard = document.createElement("article");
   flyingCard.className = `fly-evidence-card is-${question.result}`;
   flyingCard.setAttribute("aria-hidden", "true");
   flyingCard.innerHTML = `<span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHTML(question.keyword || "新线索")}</strong><div><b>${verdictLabel(question.result)}</b><em>${evidenceLabel(question.result)}</em></div>`;
@@ -790,21 +867,20 @@ function animateAnswerToBoard(index) {
     { transform: "translate(0, 0) scale(1)", opacity: 1 },
     { transform: `translate(${deltaX * 0.42}px, ${deltaY * 0.35 - 52}px) scale(.82) rotate(-1.5deg)`, opacity: .94, offset: .48 },
     { transform: `translate(${deltaX}px, ${deltaY}px) scale(${targetScaleX}, ${targetScaleY}) rotate(0deg)`, opacity: .98 }
-  ], { duration: 760, easing: "cubic-bezier(.22,.8,.22,1)", fill: "forwards" });
-
-  flight.onfinish = () => {
-    flyingCard.remove();
-    finish();
-  };
+  ], { duration: 480, easing: "cubic-bezier(.22,.8,.22,1)", fill: "forwards" });
+  flight.addEventListener("finish", finish, { once: true });
+  flight.addEventListener("cancel", finish, { once: true });
+  window.setTimeout(finish, 650);
 }
 
 function showToast(message) {
   state.toast = message;
-  render();
+  app.querySelector(".toast")?.remove();
+  app.insertAdjacentHTML("beforeend", `<div class="toast" role="status">${escapeHTML(message)}</div>`);
   window.clearTimeout(showToast.timer);
   showToast.timer = window.setTimeout(() => {
     state.toast = "";
-    render();
+    app.querySelector(".toast")?.remove();
   }, 2600);
 }
 
@@ -934,10 +1010,31 @@ async function revealAnswer() {
 }
 
 document.addEventListener("click", (event) => {
+  if (event.target.closest("#questionInput") && state.recommendationOpen) {
+    state.recommendationOpen = false;
+    document.querySelector(".recommend-panel")?.remove();
+  }
   const actionEl = event.target.closest("[data-action]");
   if (!actionEl) return;
   const action = actionEl.dataset.action;
   if ((action === "close-modal" || action === "close-rules") && actionEl.classList.contains("modal-backdrop") && event.target !== actionEl) return;
+
+  if (action === "guest-login") {
+    sessionStorage.setItem("kanshanGuestEntered", "1");
+    state.screen = "home";
+    render();
+    return;
+  }
+  if (action === "zhihu-login") { showToast("知乎账号授权页尚未接入；目前可先以游客身份体验。"); return; }
+  if (action === "toggle-music") {
+    if (musicUnlockNeeded && !musicMuted) { syncMusic(); return; }
+    musicMuted = !musicMuted;
+    localStorage.setItem("kanshanMusicMuted", String(Number(musicMuted)));
+    musicUnlockNeeded = false;
+    updateMusicButtons();
+    syncMusic();
+    return;
+  }
 
   if (action === "back") {
     if (state.screen === "topics") state.screen = "home";
@@ -950,7 +1047,7 @@ document.addEventListener("click", (event) => {
     state.rulesOpen = false;
     render();
   }
-  if (action === "home") { Object.assign(state, { ...initialState }); render(); }
+  if (action === "home") { Object.assign(state, { ...initialState, screen: "home" }); render(); }
   if (action === "topics") { state.screen = "topics"; state.selectedCaseId = null; resetRound(); render(); }
   if (action === "choose-mode") chooseMode(actionEl.dataset.mode);
   if (action === "carousel-prev") moveCarousel(-1);
@@ -987,6 +1084,16 @@ document.addEventListener("click", (event) => {
     navigator.clipboard?.writeText(shareText).then(() => showToast("分享文案已复制。"), () => showToast("复制失败，请手动复制报告内容。"));
   }
   if (action === "save-report") window.print();
+});
+
+document.addEventListener("pointerdown", () => {
+  if (musicUnlockNeeded && !musicMuted) syncMusic();
+}, { capture: true });
+document.addEventListener("focusin", (event) => {
+  if (event.target.id === "questionInput" && state.recommendationOpen) {
+    state.recommendationOpen = false;
+    document.querySelector(".recommend-panel")?.remove();
+  }
 });
 
 document.addEventListener("keydown", (event) => {

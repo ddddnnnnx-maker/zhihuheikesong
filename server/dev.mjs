@@ -8,7 +8,7 @@ await syncHostPrompt();
 const {default:worker}=await import('./api.mjs');
 const root=fileURLToPath(new URL('../',import.meta.url));
 try{process.loadEnvFile(path.join(root,'.env.local'));}catch(e){if(e.code!=='ENOENT')throw e;}
-const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml'};
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.png':'image/png','.jpg':'image/jpeg','.svg':'image/svg+xml','.webp':'image/webp','.gif':'image/gif','.mp3':'audio/mpeg'};
 const env={DEEPSEEK_API_KEY:process.env.DEEPSEEK_API_KEY,DEEPSEEK_MODEL:process.env.DEEPSEEK_MODEL,ZHIHU_ACCESS_SECRET:process.env.ZHIHU_ACCESS_SECRET,SESSION_SECRET:process.env.SESSION_SECRET||randomBytes(32).toString('hex'),ASSETS:{async fetch(request){
   const url=new URL(request.url);let rel;try{rel=decodeURIComponent(url.pathname);}catch{return new Response('Bad path',{status:400});}
   const file=path.resolve(root,'.'+(rel==='/'?'/index.html':rel));
