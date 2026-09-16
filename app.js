@@ -666,7 +666,7 @@ function patchTurnAndHost() {
   const limitReached = remaining === 0;
   const inputLocked = limitReached || state.isThinking || state.isArchiving;
   const input = app.querySelector("#questionInput");
-  if (input) input.disabled = inputLocked;
+  if (input) { input.disabled = inputLocked; input.value = ""; }
   app.querySelector('[data-action="toggle-recommendations"]')?.toggleAttribute("disabled", inputLocked);
   app.querySelector('[data-action="ask-question"]')?.toggleAttribute("disabled", inputLocked);
   app.querySelector('[data-action="reveal-answer"]')?.toggleAttribute("disabled", state.isThinking || state.isArchiving);
