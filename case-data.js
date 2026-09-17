@@ -310,7 +310,7 @@ window.FORMAL_CASES = {
         }
       ],
       "sourceLabel": "题库原文 · 海龟汤题库.docx",
-      "sourceUrl": "",
+      "sourceUrl": "https://www.zhihu.com/question/661323355/answer/3568100162",
       "prompt": "为什么“Netherlands”会被翻译成“荷兰” ？",
       "introNote": "不需要先知道专业术语，从条件、变化和因果关系逐步验证。",
       "recommendations": [

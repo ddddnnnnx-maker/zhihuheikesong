@@ -623,7 +623,7 @@ export const CASES = [
     ],
     "facts": [],
     "sourceLabel": "题库原文 · 海龟汤题库.docx",
-    "sourceUrl": ""
+    "sourceUrl": "https://www.zhihu.com/question/661323355/answer/3568100162"
   },
   {
     "id": "scapegoat",
