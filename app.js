@@ -73,7 +73,7 @@ const cases = {
 // App ID is public (assigned on the hackathon event page); the App Key that
 // actually exchanges the code for a token lives only on the server.
 const ZHIHU_OAUTH_APP_ID = "725";
-const ZHIHU_OAUTH_REDIRECT_URI = "https://zhihuheikesong.vercel.app/api/zhihu-callback";
+const ZHIHU_OAUTH_REDIRECT_URI = "https://www.kanshanyouwantang.fun/api/zhihu-callback";
 const zhihuLoginResult = new URLSearchParams(location.search).get("zhihu");
 if (zhihuLoginResult) {
   history.replaceState(null, "", location.pathname);
@@ -871,8 +871,8 @@ async function askQuestion(question) {
     state.isArchiving = true;
     patchTurnAndHost();
     // Do not wait for requestAnimationFrame: background tabs can throttle it for seconds.
-    window.setTimeout(() => animateAnswerToBoard(pieceIndex), 220);
-  }, 120);
+    window.setTimeout(() => animateAnswerToBoard(pieceIndex), 90);
+  }, 60);
 }
 
 function animateAnswerToBoard(index) {
@@ -913,7 +913,7 @@ function animateAnswerToBoard(index) {
   flyingCard.className = `fly-evidence-card is-condensing is-${question.result}`;
   flyingCard.setAttribute("aria-hidden", "true");
   flyingCard.innerHTML = `
-    <span class="fly-seed">${verdictLabel(question.result)}</span>
+    <span class="fly-seed"></span>
     <div class="fly-face">
       <span>${String(index + 1).padStart(2, "0")}</span>
       <strong>${escapeHTML(question.keyword || "新线索")}</strong>
@@ -930,23 +930,19 @@ function animateAnswerToBoard(index) {
   const deltaY = targetRect.top - sourceRect.top;
   const targetScaleX = targetRect.width / sourceRect.width;
   const targetScaleY = targetRect.height / sourceRect.height;
-  const duration = 620;
+  const duration = 420;
   const flight = flyingCard.animate([
     { transform: "translate(0, 0) scale(1)", borderRadius: "999px", offset: 0 },
-    { transform: `translate(${deltaX * 0.4}px, ${deltaY * 0.4 - 46}px) scale(${Math.max(targetScaleX, targetScaleY) * 0.5}, ${Math.max(targetScaleX, targetScaleY) * 0.5})`, borderRadius: "46%", offset: .52 },
+    { transform: `translate(${deltaX * 0.4}px, ${deltaY * 0.4 - 40}px) scale(${Math.max(targetScaleX, targetScaleY) * 0.5}, ${Math.max(targetScaleX, targetScaleY) * 0.5})`, borderRadius: "46%", offset: .55 },
     { transform: `translate(${deltaX}px, ${deltaY}px) scale(${targetScaleX}, ${targetScaleY})`, borderRadius: "18px", offset: 1 }
   ], { duration, easing: "cubic-bezier(.22,.75,.22,1)", fill: "forwards" });
-  flyingCard.querySelector(".fly-seed").animate(
-    [{ opacity: 1, offset: 0 }, { opacity: 1, offset: .32 }, { opacity: 0, offset: .58 }],
-    { duration, easing: "linear", fill: "forwards" }
-  );
   flyingCard.querySelector(".fly-face").animate(
-    [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .5 }, { opacity: 1, offset: .88 }],
+    [{ opacity: 0, offset: 0 }, { opacity: 0, offset: .55 }, { opacity: 1, offset: .9 }],
     { duration, easing: "linear", fill: "forwards" }
   );
   flight.addEventListener("finish", finish, { once: true });
   flight.addEventListener("cancel", finish, { once: true });
-  window.setTimeout(finish, duration + 160);
+  window.setTimeout(finish, duration + 140);
 }
 
 function showToast(message) {

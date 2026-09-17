@@ -676,31 +676,22 @@
   font-weight: 800;
 }
 
-/* The flight starts as a small colored seed (the verdict badge) and grows into
-   the full card face, instead of a card-shaped box being squashed from a wide
-   answer bubble down to a small tile. */
+/* The flight starts as a plain white dot and grows into the full card face,
+   instead of a card-shaped box being squashed from a wide answer bubble down
+   to a small tile. No verdict color or text on the dot itself - just a
+   neutral spark that becomes the card. */
 .fly-evidence-card.is-condensing {
   display: block;
   padding: 0;
   border-color: transparent;
-  background: var(--ink);
+  background: #fff;
+  box-shadow: 0 4px 18px rgba(18, 40, 74, 0.18);
 }
-
-.fly-evidence-card.is-condensing.is-yes { background: var(--lime); }
-.fly-evidence-card.is-condensing.is-partial { background: #e08421; }
-.fly-evidence-card.is-condensing.is-irrelevant { background: #8993a2; }
 
 .fly-seed {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 900;
 }
-
-.fly-evidence-card.is-condensing.is-yes .fly-seed { color: var(--ink); }
 
 .fly-face {
   position: absolute;

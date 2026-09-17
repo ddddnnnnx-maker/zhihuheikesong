@@ -6,7 +6,7 @@ import { VERDICTS, normalizeQuestion, mergeClues, scoreRubric, validateProfile }
 // the open-platform Access Secret are read from env and never sent to the
 // browser or logged; only this handler ever sees them.
 const ZHIHU_OAUTH_APP_ID = '725';
-const ZHIHU_OAUTH_REDIRECT_URI = 'https://zhihuheikesong.vercel.app/api/zhihu-callback';
+const ZHIHU_OAUTH_REDIRECT_URI = 'https://www.kanshanyouwantang.fun/api/zhihu-callback';
 async function handleZhihuCallback(url, env) {
   const redirectTo = (query) => new Response(null, { status: 302, headers: { Location: `/${query}` } });
   const code = url.searchParams.get('authorization_code') || url.searchParams.get('code');
