@@ -41,8 +41,11 @@ export function validateProfile(raw, history) {
     const d = raw.dimensions.find(x=>x.axis===a[0]+a[1]);
     if (!d || !(d.pole === null || a.slice(0,2).includes(d.pole)) || !Array.isArray(d.evidence) || typeof d.reason !== 'string') throw new Error('invalid_profile');
     const evidence = [...new Set(d.evidence)].filter(i=>Number.isInteger(i) && i >= 1 && i <= history.length);
-    // At least two grounded turns per axis. A sparse round must not fabricate a complete type.
-    return {axis:d.axis, pole:evidence.length >= 2 ? d.pole : null, evidence, reason:d.reason.slice(0,220)};
+    // At least one grounded turn per axis, so a pole is never asserted from thin
+    // air. Requiring two here (matching an earlier, stricter prompt) meant a
+    // full 4-axis type needed 8 non-overlapping citations from just 6 possible
+    // questions - effectively unreachable, so LiuBTI almost never resolved.
+    return {axis:d.axis, pole:evidence.length >= 1 ? d.pole : null, evidence, reason:d.reason.slice(0,220)};
   });
   const code = dimensions.every(d=>d.pole) ? dimensions.map(d=>d.pole).join('') : null;
   return {code, name:TYPES[code] || '推理风格探索中', dimensions};

@@ -228,8 +228,8 @@ async function finishJudge(decision,question,session,env) {
 const evaluationPrompt=`你是海龟汤答案评估与本局推理风格分析员。
 按rubric逐项对比guess与truth的语义，接受同义表达和简短但准确的答案。知识题以机制理解为准，准确的通俗解释不必写出专业术语；但只说“发生变化”等空泛表达不等于解释了机制。不得因提问次数、关键词堆积给奖励。未提及为missing，部分覆盖为partial，充分覆盖为covered，明确冲突为contradicted；否定句必须识别，不能按关键词命中。
 根据按时间顺序排列的history分析LiuBTI：DG细节/全局（观察入口），EF广探/深挖（切换方向/持续追问），VX求证/排除（支持假设/主动反证），OC开放/定案（已有解释后探索替代/收束整理）。
-不能把得到NO直接等于X，也不能把提前提交直接等于C。每个倾向至少引用两条实际问答序号；证据不足或势均力敌pole为null。不能臆造玩家行为或做稳定人格诊断。
-输出 {"assessments":[{"id":"rubric中的id","status":"covered|partial|missing|contradicted","reason":"简短解释"}],"profile":{"dimensions":[{"axis":"DG","pole":"D|G|null","evidence":[1,2],"reason":"基于实际提问的解释"}, ... EF/VX/OC]}}。
+不能把得到NO直接等于X，也不能把提前提交直接等于C。每个倾向至少引用一条实际问答序号；完全没有依据或势均力敌pole为null。六问要覆盖四个维度，单条证据不足以支撑该维度时才判null，不要因为追求两条证据而把有依据的倾向也判null。不能臆造玩家行为或做稳定人格诊断。
+输出 {"assessments":[{"id":"rubric中的id","status":"covered|partial|missing|contradicted","reason":"简短解释"}],"profile":{"dimensions":[{"axis":"DG","pole":"D|G|null","evidence":[1],"reason":"基于实际提问的解释"}, ... EF/VX/OC]}}。
 pole未知时必须使用JSON null。guess为null时assessments为空，只分析本局风格。每个评分项均须返回一次。`;
 export default {
   async fetch(request,env) {
