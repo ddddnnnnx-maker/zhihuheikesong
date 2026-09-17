@@ -2,6 +2,34 @@ import { CASES, publicCase } from '../data/cases.mjs';
 import { HOST_PROMPT_REFERENCE } from './host-prompt.mjs';
 import { JUDGE_CALIBRATION } from '../data/judge-calibration.mjs';
 import { VERDICTS, normalizeQuestion, mergeClues, scoreRubric, validateProfile } from '../game-core.mjs';
+// Hackathon OAuth: App ID is public (assigned on the event page). App Key and
+// the open-platform Access Secret are read from env and never sent to the
+// browser or logged; only this handler ever sees them.
+const ZHIHU_OAUTH_APP_ID = '725';
+const ZHIHU_OAUTH_REDIRECT_URI = 'https://zhihuheikesong.vercel.app/api/zhihu-callback';
+async function handleZhihuCallback(url, env) {
+  const redirectTo = (query) => new Response(null, { status: 302, headers: { Location: `/${query}` } });
+  const code = url.searchParams.get('authorization_code') || url.searchParams.get('code');
+  if (!code || !env.ZHIHU_OAUTH_APP_KEY) return redirectTo('?zhihu=error');
+  try {
+    const form = new URLSearchParams({
+      app_id: ZHIHU_OAUTH_APP_ID,
+      app_key: env.ZHIHU_OAUTH_APP_KEY,
+      grant_type: 'authorization_code',
+      redirect_uri: ZHIHU_OAUTH_REDIRECT_URI,
+      code
+    });
+    const response = await fetch('https://openapi.zhihu.com/access_token', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: form.toString()
+    });
+    const data = await response.json().catch(() => null);
+    return redirectTo(data?.access_token ? '?zhihu=ok' : '?zhihu=error');
+  } catch {
+    return redirectTo('?zhihu=error');
+  }
+}
 const buckets = new Map();
 const messages = {
   OPEN:'看山只能判断是非问题，请换成一个可以判断的命题。', MULTIPLE:'看山一次只能回答一个问题，请选一个最想知道的。',
@@ -212,6 +240,7 @@ export default {
     }
     try {
       if(url.pathname==='/api/cases'&&request.method==='GET') return json(CASES.map(publicCase));
+      if(url.pathname==='/api/zhihu-callback'&&request.method==='GET') return await handleZhihuCallback(url,env);
       if(request.method!=='POST') failure('method_not_allowed',405);
       if(request.headers.get('Origin')&&request.headers.get('Origin')!==url.origin) failure('forbidden',403);
       if(limited(request)) failure('too_many_requests',429); const body=await readBody(request);

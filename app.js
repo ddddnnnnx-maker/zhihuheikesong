@@ -70,6 +70,19 @@ const cases = {
   knowledge: orderCases(sourceCases.knowledge, CASE_ORDER.knowledge, "K")
 };
 
+// App ID is public (assigned on the hackathon event page); the App Key that
+// actually exchanges the code for a token lives only on the server.
+const ZHIHU_OAUTH_APP_ID = "725";
+const ZHIHU_OAUTH_REDIRECT_URI = "https://zhihuheikesong.vercel.app/api/zhihu-callback";
+const zhihuLoginResult = new URLSearchParams(location.search).get("zhihu");
+if (zhihuLoginResult) {
+  history.replaceState(null, "", location.pathname);
+  if (zhihuLoginResult === "ok") {
+    sessionStorage.setItem("kanshanGuestEntered", "1");
+    sessionStorage.setItem("kanshanZhihuLoggedIn", "1");
+  }
+}
+
 const initialState = {
   screen: sessionStorage.getItem("kanshanGuestEntered") === "1" ? "home" : "login",
   mode: "story",
@@ -177,8 +190,8 @@ function loginHTML() {
   return `<main class="screen login-screen">
     <div class="login-sheen" aria-hidden="true"></div>
     <div class="login-copy"><span class="eyebrow">知乎 · 看山有碗汤</span><h1>看山有碗汤</h1><p>六个问题，把一个离奇故事问成你自己的答案。</p>
-      <div class="login-actions"><button class="primary-button login-zhihu" type="button" data-action="zhihu-login"><img src="${LOGO_IMAGE}" alt="" /> 知乎账号登录 <small>授权接入中</small></button><button class="ghost-button login-guest" type="button" data-action="guest-login">以游客身份开始 <span aria-hidden="true">→</span></button></div>
-      <small class="login-note">游客可体验完整推理；知乎账号授权将在后续接入。</small>
+      <div class="login-actions"><button class="primary-button login-zhihu" type="button" data-action="zhihu-login"><img src="${LOGO_IMAGE}" alt="" /> 知乎账号登录</button><button class="ghost-button login-guest" type="button" data-action="guest-login">以游客身份开始 <span aria-hidden="true">→</span></button></div>
+      <small class="login-note">知乎账号登录将跳转到知乎完成授权；游客同样可以体验完整推理。</small>
     </div>
     <div class="login-visual"><div class="login-orbit" aria-hidden="true"></div><img src="${HOME_HOST_IMAGE}" alt="拿着放大镜的刘看山" /></div>
     <div class="login-music">${musicButtonHTML()}</div>
@@ -1093,7 +1106,10 @@ document.addEventListener("click", (event) => {
     render();
     return;
   }
-  if (action === "zhihu-login") { showToast("知乎账号授权页尚未接入；目前可先以游客身份体验。"); return; }
+  if (action === "zhihu-login") {
+    location.href = `https://openapi.zhihu.com/authorize?redirect_uri=${encodeURIComponent(ZHIHU_OAUTH_REDIRECT_URI)}&app_id=${ZHIHU_OAUTH_APP_ID}&response_type=code`;
+    return;
+  }
   if (action === "toggle-music") {
     if (musicUnlockNeeded && !musicMuted) { syncMusic(); return; }
     musicMuted = !musicMuted;
@@ -1253,3 +1269,5 @@ window.addEventListener("resize", () => {
 });
 
 render();
+if (zhihuLoginResult === "ok") showToast("知乎账号登录成功。");
+if (zhihuLoginResult === "error") showToast("知乎登录未完成，可以重试或先用游客身份体验。");
