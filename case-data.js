@@ -268,7 +268,7 @@ window.FORMAL_CASES = {
         }
       ],
       "sourceLabel": "题库原文 · 海龟汤题库.docx",
-      "sourceUrl": "",
+      "sourceUrl": "https://www.zhihu.com/question/356613340",
       "prompt": "为什么绿豆汤有时是红色，有时是绿色？",
       "introNote": "不需要先知道专业术语，从条件、变化和因果关系逐步验证。",
       "recommendations": [
@@ -352,7 +352,7 @@ window.FORMAL_CASES = {
         }
       ],
       "sourceLabel": "题库原文 · 海龟汤题库.docx",
-      "sourceUrl": "",
+      "sourceUrl": "https://www.zhihu.com/question/561377532",
       "prompt": "明明可以是替罪牛、替罪鸡，为什么叫“替罪羊”？",
       "introNote": "不需要先知道专业术语，从条件、变化和因果关系逐步验证。",
       "recommendations": [
@@ -394,7 +394,7 @@ window.FORMAL_CASES = {
         }
       ],
       "sourceLabel": "题库原文 · 海龟汤题库.docx",
-      "sourceUrl": "",
+      "sourceUrl": "https://www.zhihu.com/question/518358415",
       "prompt": "为什么炖肉要去血水，烤肉却不用？",
       "introNote": "不需要先知道专业术语，从条件、变化和因果关系逐步验证。",
       "recommendations": [

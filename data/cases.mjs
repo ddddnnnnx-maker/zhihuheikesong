@@ -188,7 +188,7 @@ export const CASES = [
     ],
     "facts": [],
     "sourceLabel": "题库原文 · 海龟汤题库.docx",
-    "sourceUrl": "",
+    "sourceUrl": "https://www.zhihu.com/question/356613340",
     "judgeNotes": "以题库原文作为本局判题依据。题目没有两个人、两锅对照实验设定，不得补出该场景。原文明确提到铁锅、不锈钢锅、空气、水质等因素。询问这些因素是否影响颜色可以按原文确认；精确pH或某一次实际使用的锅未设定。"
   },
   {
@@ -707,7 +707,7 @@ export const CASES = [
     ],
     "facts": [],
     "sourceLabel": "题库原文 · 海龟汤题库.docx",
-    "sourceUrl": ""
+    "sourceUrl": "https://www.zhihu.com/question/561377532"
   },
   {
     "id": "meat-juice",
@@ -780,7 +780,7 @@ export const CASES = [
     ],
     "facts": [],
     "sourceLabel": "题库原文 · 海龟汤题库.docx",
-    "sourceUrl": ""
+    "sourceUrl": "https://www.zhihu.com/question/518358415"
   }
 ];
 export function publicCase(item) {
