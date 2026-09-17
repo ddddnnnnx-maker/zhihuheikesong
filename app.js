@@ -379,11 +379,23 @@ function evidenceLinesHTML() {
   }).join("");
 }
 
+// Longer summaries need a smaller size to still fit the card's 3-line cap
+// without pushing into the verdict badge below.
+function keywordFontSize(text) {
+  const length = (text || "").length;
+  if (length <= 8) return 15;
+  if (length <= 14) return 13.5;
+  if (length <= 22) return 12;
+  if (length <= 32) return 10.5;
+  return 9.5;
+}
+
 function evidenceCardHTML(question, index, className = "") {
   const position = getEvidencePosition(index);
   const verdict = verdictLabel(question.result);
   const archiveStates = { yes: "CONFIRMED", no: "ELIMINATED", partial: "PARTIAL", irrelevant: "IRRELEVANT" };
   const archiveState = archiveStates[question.result] || "REVIEW";
+  const keyword = question.keyword || "新线索";
   return `
     <article class="evidence-card is-${question.result} ${question.justAdded ? "is-new" : ""} ${className}"
       data-evidence-index="${index}" title="${escapeHTML(question.text)}" aria-label="第 ${index + 1} 问：${escapeHTML(question.text)}。回答：${verdict}"
@@ -393,7 +405,7 @@ function evidenceCardHTML(question, index, className = "") {
       <span class="evidence-watermark" aria-hidden="true">?</span>
       <span class="evidence-stamp" aria-hidden="true">CASE FILE</span>
       <div class="evidence-card-head"><span>CLUE ${String(index + 1).padStart(2, "0")}</span><i class="evidence-status-dot" aria-hidden="true"></i></div>
-      <strong>${escapeHTML(question.keyword || "新线索")}</strong>
+      <strong style="--keyword-size:${keywordFontSize(keyword)}px">${escapeHTML(keyword)}</strong>
       <div class="evidence-index" aria-hidden="true"><span>REASONING EVIDENCE</span><i></i></div>
       <div class="evidence-verdict"><b>${verdict}</b><span>${evidenceLabel(question.result)}</span></div>
       <div class="evidence-footer-strip" aria-hidden="true"><span>${archiveState}</span><i></i><small>KANSHAN SOUP / 2026</small></div>
@@ -751,37 +763,21 @@ function moveCarousel(direction) {
   if (counter) counter.textContent = `${String(state.carouselIndex + 1).padStart(2, "0")} / ${String(length).padStart(2, "0")}`;
 }
 
-function extractEvidenceKeyword(item, question, decision, questionNumber) {
-  const verifiedClue = Array.isArray(decision?.board)
-    ? decision.board.find((clue) => clue.questionIds?.includes(questionNumber))
-    : null;
-  const usedKeywords = new Set(state.questions.map((entry) => entry.keyword));
-  const makeUnique = (candidate) => {
-    const base = candidate.trim() || "关键假设";
-    if (!usedKeywords.has(base)) return base;
-    let suffix = 2;
-    while (usedKeywords.has(`${base}·${suffix}`)) suffix += 1;
-    return `${base}·${suffix}`;
-  };
-  if (verifiedClue?.label) return makeUnique(verifiedClue.label);
-  const matchedHint = item.recommendations?.find((hint) => question.includes(hint.keyword));
-  if (matchedHint) return makeUnique(matchedHint.keyword);
+// The card only ever shows a condensed version of what the player actually
+// asked - no keyword-matching against hints or the clue library, so it can
+// never say something the player didn't type.
+function extractEvidenceKeyword(question) {
   const cleaned = question
     .replace(/[？?！!。]/g, "")
     .replace(/^(请问|我想知道|是不是|是否|会不会|有没有|难道|可能是|这个|这件事)/, "")
     .replace(/(吗|么|呢)$/, "")
     .trim();
-  const clause = cleaned.split(/[，,；;、]/).map((part) => part.trim()).find((part) => part.length >= 2 && part.length <= 16);
-  if (clause) return makeUnique(clause);
-  if (cleaned.length <= 16) return makeUnique(cleaned);
-  if (typeof Intl.Segmenter === "function") {
-    const stop = new Set(["的", "了", "是", "在", "把", "被", "和", "与", "有", "这", "那", "一个", "因为", "所以", "吗"]);
-    const words = [...new Intl.Segmenter("zh-CN", { granularity: "word" }).segment(cleaned)]
-      .filter((segment) => segment.isWordLike && !stop.has(segment.segment))
-      .map((segment) => segment.segment);
-    if (words.length) return makeUnique(words.slice(0, 3).join("·"));
-  }
-  return makeUnique("待核实的假设");
+  const summary = cleaned || question.trim() || "这个问题";
+  const usedKeywords = new Set(state.questions.map((entry) => entry.keyword));
+  if (!usedKeywords.has(summary)) return summary;
+  let suffix = 2;
+  while (usedKeywords.has(`${summary}·${suffix}`)) suffix += 1;
+  return `${summary}·${suffix}`;
 }
 
 function useRecommendation(keyword, guidance) {
@@ -870,7 +866,7 @@ async function askQuestion(question) {
   }
   window.setTimeout(() => {
     const pieceIndex = state.questions.length;
-    state.questions.push({ text, keyword: extractEvidenceKeyword(item, text, decision, pieceIndex + 1), result, archived: false, justAdded: false });
+    state.questions.push({ text, keyword: extractEvidenceKeyword(text), result, archived: false, justAdded: false });
     state.currentTurn = { kind: "answer", index: pieceIndex, text, result };
     state.isThinking = false;
     state.isArchiving = true;

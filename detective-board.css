@@ -1936,3 +1936,23 @@
     grid-column: auto;
   }
 }
+
+/* The keyword text is now a condensed summary of what the player typed
+   instead of a short tag, so it needs real wrapping - capped at 3 lines with
+   a size that backs off for longer summaries (set inline via --keyword-size)
+   - and it must stay clipped so it can never grow into the verdict badge
+   below it, which this rule doesn't touch at all. */
+.evidence-card > strong {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 8px 0 10px;
+  color: #172033;
+  font-size: var(--keyword-size, 15px);
+  font-weight: 900;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
