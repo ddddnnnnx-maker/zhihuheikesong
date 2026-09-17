@@ -5,7 +5,7 @@
 ## 当前实现
 
 - 前端沿用原高保真版本：首页、循环选题、读题、侦探线索板、可拖动卡片、主持人 GIF、语音转文字、揭晓与报告界面均保留。
-- 首页前新增登录入口：游客可以完整试玩；“知乎账号登录”仅为待接入 OAuth 的界面占位，不会伪造授权或账号状态。
+- 首页前新增登录入口：游客可以完整试玩；“知乎账号登录”走真实的黑客松 OAuth 授权（见下方 API 一节），只证明完成了知乎授权，暂不展示昵称头像。
 - 非推理页与推理页分别使用两首本地背景音乐；页面首次尝试播放，若浏览器拦截自动播放，首次点击即可解锁，右上角音乐按钮可静音。
 - 选题轮播仅更新卡片本身；线索卡飞入设有超时收尾，保证六问后最终答案入口可用。主持人拒答时展示单独动图。
 - 后端采用交接包版本：HMAC 签名会话、四小时过期、六问计数、重复/开放式/多问/歧义处理、疑难结果复核、线索合并、揭晓与报告评分。普通是非问只调用一次判题模型，避免串行复核造成等待。
@@ -29,6 +29,8 @@
 Vercel 部署通过根目录下的 `api/*.mjs` 入口复用 `server/api.mjs`。密钥只从 Vercel 环境变量读取，不进入浏览器或仓库。
 
 生产环境必须配置 `DEEPSEEK_API_KEY`（secret）和独立的 `SESSION_SECRET`（secret）。可用 `DEEPSEEK_FAST_MODEL`、`DEEPSEEK_PRO_MODEL` 分别覆盖默认的 `deepseek-flash`、`deepseek-v4-pro`；兼容旧的 `DEEPSEEK_MODEL`，仅把它作为快速模型配置读取。禁止把密钥写入仓库、前端、文档或日志。
+
+知乎账号登录（`GET /api/zhihu-callback`）需要额外配置 `ZHIHU_OAUTH_APP_KEY`（secret，黑客松页面分配的 App Key，用于服务端换取 OAuth Token）。开放平台 `ZHIHU_ACCESS_SECRET` 已在 AI 主持人回退链路中使用；同一个值也是后续调用用户数据 API（`references/user-api.md`）时的 `Authorization` 凭证。App ID 是公开值，直接写在 `app.js` 和 `server/api.mjs` 里，不需要配置。
 
 ## 关键文件
 
