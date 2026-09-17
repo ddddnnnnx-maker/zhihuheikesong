@@ -935,7 +935,7 @@
   right: auto;
   bottom: auto;
   width: 100%;
-  height: min(230px, 23vh);
+  height: min(340px, 34vh);
   margin-top: auto;
   border-radius: 14px;
   background: #fff;
@@ -955,7 +955,8 @@
 
 @media (max-width: 720px) {
   .liubti-axes { grid-template-columns: 1fr; }
-  .report-host.liubti-host { height: 250px; }
+  .liubti-traits { grid-template-columns: 1fr; }
+  .report-host.liubti-host { height: 280px; }
 }
 
 /* 2026-09 evidence-board refinement */
@@ -1855,13 +1856,10 @@
   grid-auto-rows: minmax(220px, auto);
 }
 
-.report-example-card {
-  grid-column: span 2;
-}
-
-/* Report overview: two equal-weight primary cards, followed by a balanced detail grid. */
+/* Report overview: LiuBTI carries the portrait and trait copy, so it gets
+   the larger 3:2 share against the judgment-basis card. */
 .report-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 3fr 2fr;
   grid-template-rows: auto;
   align-items: stretch;
 }
@@ -1887,8 +1885,25 @@
   margin-top: auto;
 }
 
-.report-example-card {
-  grid-column: auto;
+.liubti-traits {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.liubti-trait h4 {
+  margin: 0 0 4px;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.liubti-trait p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
 @media (max-width: 1100px) {
@@ -1930,10 +1945,6 @@
   .answer-main h1 {
     line-height: 1.1;
     letter-spacing: -0.025em;
-  }
-
-  .report-example-card {
-    grid-column: auto;
   }
 }
 

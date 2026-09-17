@@ -165,7 +165,7 @@ function currentCase() {
   return allCases.find((item) => item.id === state.selectedCaseId) || currentList()[state.carouselIndex];
 }
 
-function headerHTML(step = "探索") {
+function headerHTML(step = "") {
   const navState = state.screen === "home" ? "home" : state.screen === "topics" ? "topics" : "play";
   const backButton = state.screen === "home" ? "" : `<button class="back-button" type="button" data-action="back" aria-label="返回上一页"><span aria-hidden="true">←</span></button>`;
   return `
@@ -182,7 +182,7 @@ function headerHTML(step = "探索") {
         <button class="nav-link ${navState === "topics" ? "is-active" : ""}" type="button" data-action="topics">选题</button>
         <button class="nav-link ${navState === "play" ? "is-active" : ""}" type="button" data-action="show-rules">怎么玩</button>
       </nav>
-      <div class="top-actions">${musicButtonHTML()}<span class="progress-pill">${escapeHTML(step)}</span></div>
+      <div class="top-actions">${musicButtonHTML()}${step ? `<span class="progress-pill">${escapeHTML(step)}</span>` : ""}</div>
     </header>`;
 }
 
@@ -602,9 +602,8 @@ function reportHTML(item) {
     <main class="screen report-screen">
       <div class="report-header"><div><span class="eyebrow">LIUBTI · 本局推理图鉴</span><h1>你是怎么<br />接近真相的？</h1></div><span class="status-chip is-hot">${item.number} · ${state.questions.length} 问完成</span></div>
       <section class="report-grid">
-        <article class="report-card tag-card liubti-card report-primary-card"><div class="liubti-title"><span>LiuBTI · ${codeLabel}</span><h2>${escapeHTML(profile.name)}</h2></div><p>${escapeHTML(profile.summary)}</p><div class="liubti-axes">${dimensions}</div><img class="report-host liubti-host" src="${profile.image}" alt="${escapeHTML(profile.name)}对应的刘看山形象" /></article>
+        <article class="report-card tag-card liubti-card report-primary-card"><div class="liubti-title"><span>LiuBTI · ${codeLabel}</span><h2>${escapeHTML(profile.name)}</h2></div><p>${escapeHTML(profile.summary)}</p><div class="liubti-axes">${dimensions}</div>${copy ? `<div class="liubti-traits"><div class="liubti-trait"><h4>你的优势</h4><p>${escapeHTML(copy.strength)}</p></div><div class="liubti-trait"><h4>容易卡住的地方</h4><p>${escapeHTML(copy.blindspot)}</p></div></div>` : ""}<img class="report-host liubti-host" src="${profile.image}" alt="${escapeHTML(profile.name)}对应的刘看山形象" /></article>
         <article class="report-card community-card report-primary-card"><h3>本局判断依据</h3><div class="metric-big">${state.questions.length}<small>问</small></div><p>${profile.axes.map((axis) => escapeHTML(axis.reason)).join(" ") || "有效问答太少，本局暂不定型。"}</p><span class="demo-data">仅分析本局 · 不是固定人格标签</span></article>
-        ${copy ? `<article class="report-card report-strength-card"><h3>你的优势</h3><p>${escapeHTML(copy.strength)}</p></article><article class="report-card report-blindspot-card"><h3>容易卡住的地方</h3><p>${escapeHTML(copy.blindspot)}</p></article><article class="report-card report-advice-card"><h3>下一局建议</h3><p>${escapeHTML(copy.advice)}</p></article><article class="report-card report-example-card"><h3>提问方式示例</h3><p>${escapeHTML(copy.examples)}</p><p>${escapeHTML(copy.message)}</p></article>` : ""}
       </section>
       <footer class="report-footer"><p>这是你这一局的推理模样，不是固定的人格标签。下一碗汤，也许会遇见不一样的你。</p><div class="report-actions"><button class="report-action" type="button" data-action="share-report">复制分享文案</button><button class="report-action" type="button" data-action="save-report">保存报告</button><button class="primary-button" type="button" data-action="topics">再选一题</button></div></footer>
     </main>`;
@@ -614,7 +613,7 @@ function render() {
   const screenChanged = lastRenderedScreen !== state.screen;
   const previousHostMedia = state.screen === "game" && !screenChanged ? app.querySelector(".host-reaction-media") : null;
   let content = "";
-  let step = "探索";
+  let step = "";
   const item = currentCase();
   if (state.screen === "login") content = loginHTML();
   if (state.screen === "home") content = homeHTML();
